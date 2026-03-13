@@ -1,0 +1,194 @@
+{
+  "application_name": "InsightForge",
+  "design_philosophy": {
+    "identity": "The Anti-AI Designer (E1)",
+    "core_principles": [
+      "Fusion over Imitation: Mix SaaS precision with Editorial warmth.",
+      "Emotion First: Data is boring; Insights are exciting. Design for the 'Aha!' moment.",
+      "Content is King: Every pixel serves the data.",
+      "Negative Space: Use whitespace to reduce cognitive load.",
+      "Contrast: High contrast for readability and hierarchy."
+    ],
+    "anti_patterns": [
+      "No generic 'Inter' for headings.",
+      "No centered layouts for everything.",
+      "No gradient overload (>20%).",
+      "No default 'Vercel' look without customization.",
+      "No purple/teal CTA buttons."
+    ]
+  },
+  "typography": {
+    "font_family": {
+      "headings": "Plus Jakarta Sans, sans-serif",
+      "body": "Inter, sans-serif",
+      "mono": "JetBrains Mono, monospace"
+    },
+    "scale": {
+      "hero": "text-5xl md:text-7xl font-bold tracking-tight",
+      "h1": "text-4xl font-semibold tracking-tight",
+      "h2": "text-3xl font-medium tracking-tight",
+      "h3": "text-2xl font-medium",
+      "body_lg": "text-lg leading-relaxed",
+      "body_base": "text-base leading-relaxed text-muted-foreground",
+      "caption": "text-sm text-muted-foreground uppercase tracking-wider"
+    },
+    "rules": [
+      "Headings > 32px must have tracking-tight.",
+      "Overlines must be uppercase and tracking-wide.",
+      "Never center text by default; use left alignment for readability."
+    ]
+  },
+  "colors": {
+    "theme_mode": "system",
+    "palette": {
+      "primary": {
+        "name": "Electric Indigo",
+        "hex": "#6366f1",
+        "tailwind": "indigo-500",
+        "usage": "Primary CTAs, Active States, Key Highlights"
+      },
+      "secondary": {
+        "name": "Slate",
+        "hex": "#64748b",
+        "tailwind": "slate-500",
+        "usage": "Secondary actions, borders, muted text"
+      },
+      "accent": {
+        "name": "Cyan",
+        "hex": "#06b6d4",
+        "tailwind": "cyan-500",
+        "usage": "Data visualization highlights, progress bars"
+      },
+      "background": {
+        "light": "#ffffff",
+        "dark": "#09090b",
+        "usage": "Main app background"
+      },
+      "surface": {
+        "light": "#f8fafc",
+        "dark": "#18181b",
+        "usage": "Cards, Sidebars, Modals"
+      },
+      "status": {
+        "success": "#22c55e",
+        "warning": "#f59e0b",
+        "error": "#ef4444",
+        "info": "#3b82f6"
+      }
+    },
+    "gradients": {
+      "hero_glow": "bg-gradient-to-r from-indigo-500/20 via-purple-500/20 to-cyan-500/20 blur-3xl",
+      "card_border": "bg-gradient-to-b from-white/10 to-transparent"
+    }
+  },
+  "layout_strategies": {
+    "general": {
+      "spacing": "Generous. Use p-8, p-12 where others use p-4.",
+      "grid_system": "Use 'Bento' grids. Avoid equal-sized boring grids.",
+      "container": "Max-width 1400px for dashboard, full-width for marketing hero."
+    },
+    "marketing": {
+      "hero": "Left-aligned strong typography, 3D/Abstract visual on right or background.",
+      "features": "Zig-zag layout or Bento grid.",
+      "testimonials": "Horizontal scroll or Masonry grid."
+    },
+    "dashboard": {
+      "structure": "Sidebar (Collapsible) + Topbar + Main Content Area.",
+      "density": "High density for data tables. Use 'h-full' for widgets.",
+      "cards": "Flat or subtle border. No heavy shadows."
+    }
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-primary text-primary-foreground hover:bg-primary/90 rounded-md px-6 py-2.5 font-medium transition-all shadow-sm hover:shadow-md",
+      "secondary": "bg-secondary/10 text-secondary-foreground hover:bg-secondary/20 rounded-md px-6 py-2.5 font-medium transition-all",
+      "ghost": "hover:bg-accent hover:text-accent-foreground rounded-md px-4 py-2"
+    },
+    "cards": {
+      "style": "bg-card text-card-foreground border border-border/50 shadow-sm hover:border-primary/20 transition-colors",
+      "dashboard_widget": "flex flex-col h-full p-6 bg-surface rounded-xl border border-border/40"
+    },
+    "inputs": {
+      "style": "flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+    },
+    "badges": {
+      "style": "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+      "variants": {
+        "default": "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
+        "secondary": "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        "destructive": "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
+        "outline": "text-foreground"
+      }
+    },
+    "modals": {
+      "style": "bg-background border border-border shadow-lg sm:rounded-lg"
+    }
+  },
+  "visual_enhancers": {
+    "glassmorphism": {
+      "usage": "Sticky headers, overlays, toasts.",
+      "classes": "bg-background/80 backdrop-blur-xl border-b border-white/10"
+    },
+    "tracing_beam": {
+      "usage": "Feature cards, pricing tables.",
+      "description": "A subtle gradient border that follows the mouse or animates continuously."
+    },
+    "noise_texture": {
+      "usage": "Backgrounds to avoid flatness.",
+      "implementation": "SVG noise overlay with low opacity (0.03)."
+    }
+  },
+  "assets": {
+    "images": {
+      "hero_background": {
+        "url": "https://images.unsplash.com/photo-1762279389006-43963a0cee55?crop=entropy&cs=srgb&fm=jpg&q=85",
+        "alt": "Abstract neon data visualization lines",
+        "category": "hero"
+      },
+      "team_work": {
+        "url": "https://images.unsplash.com/photo-1748346918817-0b1b6b2f9bab?crop=entropy&cs=srgb&fm=jpg&q=85",
+        "alt": "Data analysts working in modern office",
+        "category": "about"
+      },
+       "abstract_purple": {
+        "url": "https://images.unsplash.com/photo-1771793231904-a516cd3baff4?crop=entropy&cs=srgb&fm=jpg&q=85",
+        "alt": "Abstract purple strands",
+        "category": "decorative"
+      },
+       "digital_landscape": {
+        "url": "https://images.unsplash.com/photo-1762279388956-1c098163a2a8?crop=entropy&cs=srgb&fm=jpg&q=85",
+        "alt": "Neon digital landscape",
+        "category": "decorative"
+      }
+    },
+    "icons": {
+      "library": "lucide-react",
+      "style": "Stroke width 1.5px, size 16px-24px usually."
+    }
+  },
+  "accessibility": {
+    "contrast": "Ensure text is APCA compliant.",
+    "focus": "Visible focus rings on all interactive elements.",
+    "attributes": "Use data-testid for all interactive elements."
+  },
+  "instructions_to_main_agent": [
+    "Install 'lucide-react' if not present.",
+    "Use 'clsx' and 'tailwind-merge' for class handling.",
+    "Implement the Dark/Light mode toggle immediately in the top navbar.",
+    "Ensure all dashboard charts use 'recharts' and are responsive.",
+    "Use 'sonner' for all toast notifications.",
+    "Follow the 'Bento' grid layout for the main dashboard view.",
+    "Do not use generic 12-column grids everywhere; vary the span.",
+    "Apply 'data-testid' to all buttons, inputs, and links."
+  ],
+  "UNIVERSAL_GUIDELINES": [
+    "Dark colors look good when used independently without gradients. DO NOT use dark colors as gradients.",
+    "Don't make generic centered layouts, simplistic gradients, and uniform styling.",
+    "Create depth through layered design elements with z-index hierarchy.",
+    "Use glass-morphism effects with backdrop filters (12-24px blur).",
+    "You MUST NOT apply universal transition (e.g., transition: all).",
+    "You MUST NOT center align the app container.",
+    "Always use modern button styles.",
+    "NEVER use AI assistant Emoji characters like 🤖🧠 for icons."
+  ]
+}
