@@ -18,7 +18,7 @@ function StatCard({ icon: Icon, label, value, color = "text-primary" }) {
       <div className={`h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center mb-3 ${color.replace('text-', 'bg-').replace('primary', 'primary/10')}`}>
         <Icon className={`h-4 w-4 ${color}`} />
       </div>
-      <p className="text-2xl font-bold">{value ?? <Skeleton className="h-7 w-12" />}</p>
+      <div className="text-2xl font-bold">{value ?? <Skeleton className="h-7 w-12" />}</div>
       <p className="text-xs text-muted-foreground mt-1">{label}</p>
     </div>
   );
