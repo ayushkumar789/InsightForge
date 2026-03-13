@@ -36,28 +36,8 @@ InsightForge is a full-stack SaaS-style dataset analytics workspace platform.
 - InsightRun (AI output, separate from analysis)
 - Report (PDF metadata)
 
-## Backend Files
-- `server.py` — main app + CORS + startup
-- `database.py` — MongoDB connection + indexes
-- `models.py` — all Pydantic models
-- `auth.py` — session auth middleware
-- `analysis_engine.py` — deterministic analysis pipeline
-- `insights_engine.py` — Gemini integration
-- `report_generator.py` — ReportLab PDF generation
-- `routers/auth_router.py` — /api/auth/*
-- `routers/workspace_router.py` — /api/workspaces, /api/projects, /api/dashboard
-- `routers/dataset_router.py` — /api/datasets, /api/projects/*/datasets
-- `routers/analysis_router.py` — /api/datasets/*/analyze
-- `routers/insights_router.py` — /api/datasets/*/insights
-- `routers/report_router.py` — /api/datasets/*/report, /api/reports/*/download
+## What's Been Implemented
 
-## Frontend Pages
-- Landing, Login, Signup (public)
-- Dashboard, WorkspacesPage, WorkspaceDetail, ProjectDetail (workspace mgmt)
-- DatasetDetail (preview), AnalysisPage (charts + stats), InsightsPage (AI), ReportPage (PDF)
-- Settings (profile + password)
-
-## What's Been Implemented (2024-03-13)
 ### Phase 1 ✅
 - JWT + Google OAuth authentication (httponly cookie sessions)
 - Workspace CRUD with cascade delete
@@ -85,6 +65,26 @@ InsightForge is a full-stack SaaS-style dataset analytics workspace platform.
 - Report includes: dataset overview, statistics tables, chart images, AI insights
 - Download endpoint with FileResponse
 - Dataset replacement with analysis invalidation
+
+### Phase 5 ✅ (2026-03-13)
+- **Analysis Engine Refinement:**
+  - Column relevance scoring system (0-100 score per column)
+  - Identifier column detection (email, uuid, id patterns + high-uniqueness heuristics)
+  - Smart chart recommendations based on analytical usefulness
+  - Freedman-Diaconis histogram binning with responsive bin edge formatting (K/M suffixes)
+  - Scatter plot uses most-correlated column pair instead of arbitrary first two
+  - High-cardinality categorical columns separated from analytical dimensions
+  - Time series chart support with auto-detected date columns
+  - Horizontal bar charts when many categories or long labels
+- **UI Responsiveness for Wide Screens:**
+  - Dashboard: max-w-screen-2xl (1536px) — was 1024px
+  - Workspaces/WorkspaceDetail: max-w-screen-2xl + 2xl:grid-cols-4
+  - ProjectDetail: max-w-[1800px] + 2xl:grid-cols-4 for dataset cards
+  - DatasetDetail: max-w-[1800px] + 2xl:grid-cols-6 meta cards
+  - AnalysisPage: max-w-[1800px] + 2xl:grid-cols-4 for charts and categorical
+  - InsightsPage: max-w-screen-2xl + xl:grid-cols-3 insight sections
+  - ReportPage: max-w-screen-2xl
+  - Settings: max-w-4xl
 
 ### Infrastructure ✅
 - Dark/light theme toggle
@@ -116,7 +116,7 @@ InsightForge is a full-stack SaaS-style dataset analytics workspace platform.
 ```
 # /app/backend/.env
 GEMINI_API_KEY=<your-gemini-api-key>          # Required for AI insights
-GEMINI_MODEL=gemini-2.5-flash                   # Default model (can change to gemini-2.5-pro)
+GEMINI_MODEL=gemini-2.5-flash                 # Default model
 ```
 
 ## Test Credentials
