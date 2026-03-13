@@ -1,0 +1,11 @@
+user_id,email,full_name,age,salary,department,status,signup_date
+1001,alice@test.com,Alice Johnson,30,50000,Engineering,active,2024-01-15
+1002,bob@test.com,Bob Smith,25,45000,Sales,active,2024-02-20
+1003,carol@test.com,Carol Williams,35,60000,Marketing,inactive,2024-03-10
+1004,dave@test.com,Dave Brown,28,52000,Engineering,active,2024-01-25
+1005,eve@test.com,Eve Davis,32,55000,Sales,pending,2024-04-05
+1006,frank@test.com,Frank Miller,40,70000,Engineering,active,2024-02-15
+1007,grace@test.com,Grace Wilson,27,48000,Marketing,active,2024-03-25
+1008,hank@test.com,Hank Moore,33,58000,Sales,inactive,2024-04-10
+1009,ivy@test.com,Ivy Taylor,29,51000,Engineering,active,2024-05-01
+1010,jack@test.com,Jack Anderson,36,62000,Marketing,active,2024-05-15

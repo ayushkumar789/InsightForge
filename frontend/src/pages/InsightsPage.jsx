@@ -86,7 +86,7 @@ export default function InsightsPage() {
 
   return (
     <Layout>
-      <div className="p-6 max-w-4xl" data-testid="insights-page">
+      <div className="p-6 w-full max-w-screen-2xl mx-auto" data-testid="insights-page">
         <Button variant="ghost" size="sm" className="gap-1 mb-4 text-muted-foreground" onClick={() => navigate(-1)}>
           <ArrowLeft className="h-4 w-4" /> Back
         </Button>
@@ -181,7 +181,7 @@ export default function InsightsPage() {
               </div>
             )}
 
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
               <InsightSection icon={TrendingUp} title="Key Trends" items={ins.key_trends} color="text-blue-500" />
               <InsightSection icon={AlertTriangle} title="Anomalies & Patterns" items={ins.anomalies} color="text-amber-500" />
               <InsightSection icon={CheckCircle2} title="Business Insights" items={ins.business_insights} color="text-green-500" />

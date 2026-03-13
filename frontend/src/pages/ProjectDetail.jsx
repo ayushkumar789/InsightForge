@@ -323,7 +323,7 @@ export default function ProjectDetail() {
 
   return (
     <Layout>
-      <div className="p-6 max-w-6xl" data-testid="project-detail-page">
+      <div className="p-6 w-full max-w-[1800px] mx-auto" data-testid="project-detail-page">
         {/* Breadcrumb */}
         <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-6">
           <button onClick={() => navigate("/workspaces")} className="hover:text-foreground flex items-center gap-1">
@@ -368,11 +368,11 @@ export default function ProjectDetail() {
 
         {/* Datasets grid */}
         {loading ? (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4">
             {[1,2,3].map(i => <Skeleton key={i} className="h-52 rounded-xl" />)}
           </div>
         ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4">
             <UploadZone projectId={projectId} onUploaded={fetchData} />
             {datasets.map(ds => (
               <DatasetCard key={ds.dataset_id} dataset={ds} onRefresh={fetchData} projectId={projectId} workspaceId={workspaceId} />

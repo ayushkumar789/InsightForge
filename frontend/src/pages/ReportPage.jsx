@@ -74,7 +74,7 @@ export default function ReportPage() {
 
   return (
     <Layout>
-      <div className="p-6 max-w-3xl" data-testid="report-page">
+      <div className="p-6 w-full max-w-screen-2xl mx-auto" data-testid="report-page">
         <Button variant="ghost" size="sm" className="gap-1 mb-4 text-muted-foreground" onClick={() => navigate(-1)}>
           <ArrowLeft className="h-4 w-4" /> Back
         </Button>

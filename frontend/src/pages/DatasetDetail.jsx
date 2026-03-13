@@ -72,7 +72,7 @@ export default function DatasetDetail() {
 
   return (
     <Layout>
-      <div className="p-6 max-w-6xl" data-testid="dataset-detail-page">
+      <div className="p-6 w-full max-w-[1800px] mx-auto" data-testid="dataset-detail-page">
         {/* Back + breadcrumb */}
         <Button variant="ghost" size="sm" className="gap-1 mb-4 text-muted-foreground" onClick={() => navigate(-1)} data-testid="back-btn">
           <ArrowLeft className="h-4 w-4" /> Back
@@ -93,7 +93,7 @@ export default function DatasetDetail() {
         </div>
 
         {/* Meta cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 2xl:grid-cols-6 gap-3 mb-6">
           {[
             { icon: FileText, label: "Type", value: dataset?.file_type?.toUpperCase() },
             { icon: HardDrive, label: "Size", value: dataset?.file_size ? `${(dataset.file_size / 1024).toFixed(1)} KB` : "—" },

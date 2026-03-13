@@ -57,7 +57,7 @@ export default function Settings() {
 
   return (
     <Layout>
-      <div className="p-6 max-w-2xl" data-testid="settings-page">
+      <div className="p-6 w-full max-w-4xl mx-auto" data-testid="settings-page">
         <h1 className="text-3xl font-bold tracking-tight mb-8">Settings</h1>
 
         {/* Profile */}

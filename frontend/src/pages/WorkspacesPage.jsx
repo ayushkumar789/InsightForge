@@ -115,7 +115,7 @@ export default function WorkspacesPage() {
 
   return (
     <Layout>
-      <div className="p-6 max-w-5xl" data-testid="workspaces-page">
+      <div className="p-6 w-full max-w-screen-2xl mx-auto" data-testid="workspaces-page">
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Workspaces</h1>
@@ -127,7 +127,7 @@ export default function WorkspacesPage() {
         </div>
 
         {loading ? (
-          <div className="grid md:grid-cols-3 gap-4">
+          <div className="grid md:grid-cols-3 2xl:grid-cols-4 gap-4">
             {[1,2,3].map(i => <Skeleton key={i} className="h-36 rounded-xl" />)}
           </div>
         ) : workspaces.length === 0 ? (
@@ -140,7 +140,7 @@ export default function WorkspacesPage() {
             </Button>
           </div>
         ) : (
-          <div className="grid md:grid-cols-3 gap-4">
+          <div className="grid md:grid-cols-3 2xl:grid-cols-4 gap-4">
             {workspaces.map(ws => (
               <WorkspaceCard
                 key={ws.workspace_id}

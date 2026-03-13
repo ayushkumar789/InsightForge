@@ -5,25 +5,50 @@ import { toast } from "sonner";
 import Layout from "../components/Layout";
 import { Button } from "../components/ui/button";
 import { Skeleton } from "../components/ui/skeleton";
-import { Badge } from "../components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
+import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../components/ui/tooltip";
 import {
   BarChart, Bar, ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend
+  ResponsiveContainer, LineChart, Line, Legend,
 } from "recharts";
 import {
   ArrowLeft, Play, BarChart2, Loader2, AlertCircle, CheckCircle2,
-  TrendingUp, Hash, Percent, Layers, RefreshCw
+  Info, Tag,
 } from "lucide-react";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const PALETTE = ["#6366f1", "#06b6d4", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#14b8a6"];
 
-const CHART_COLORS = ["#6366f1", "#06b6d4", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#14b8a6"];
+// ── Number tick formatter ────────────────────────────────────────────────────
+function fmtNum(v) {
+  if (v === null || v === undefined) return "";
+  const abs = Math.abs(v);
+  if (abs >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
+  if (abs >= 1_000) return `${(v / 1_000).toFixed(1)}K`;
+  if (Number.isInteger(v)) return String(v);
+  return parseFloat(v.toFixed(2)).toString();
+}
 
+// Truncate long category labels for axis
+function truncLabel(s, max = 12) {
+  const str = String(s ?? "");
+  return str.length > max ? str.slice(0, max) + "…" : str;
+}
+
+const TOOLTIP_STYLE = {
+  background: "var(--card)",
+  border: "1px solid hsl(var(--border))",
+  borderRadius: 8,
+  fontSize: 12,
+  color: "var(--foreground)",
+};
+
+// ── Stat cards ───────────────────────────────────────────────────────────────
 function QualityScore({ score }) {
   const color = score >= 80 ? "text-green-500" : score >= 60 ? "text-amber-500" : "text-red-500";
+  const bg = score >= 80 ? "from-green-500/10" : score >= 60 ? "from-amber-500/10" : "from-red-500/10";
   return (
-    <div className="p-4 rounded-xl bg-card border border-border/50 text-center">
+    <div className={`p-4 rounded-xl bg-card border border-border/50 text-center bg-gradient-to-br ${bg} to-transparent`}>
       <p className={`text-3xl font-bold ${color}`}>{score}%</p>
       <p className="text-xs text-muted-foreground mt-1">Data Quality Score</p>
     </div>
@@ -33,94 +58,291 @@ function QualityScore({ score }) {
 function StatCard({ label, value, sub, color = "" }) {
   return (
     <div className="p-4 rounded-xl bg-card border border-border/50">
-      <p className={`text-xl font-bold ${color}`}>{value ?? "—"}</p>
-      <p className="text-xs font-medium">{label}</p>
+      <div className={`text-xl font-bold ${color}`}>{value ?? "—"}</div>
+      <p className="text-xs font-medium mt-0.5">{label}</p>
       {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
     </div>
   );
 }
 
+// ── Heatmap (custom grid) ───────────────────────────────────────────────────
 function HeatmapChart({ chart }) {
   const { labels = [], matrix = [] } = chart;
-  const getColor = (val) => {
-    if (val === null || val === undefined) return "#e2e8f0";
-    const abs = Math.abs(val);
-    if (val > 0.7) return "#22c55e";
-    if (val > 0.3) return "#86efac";
-    if (val < -0.7) return "#ef4444";
-    if (val < -0.3) return "#fca5a5";
-    return "#e2e8f0";
+  const n = labels.length;
+  const cellSize = Math.max(36, Math.min(64, Math.floor(520 / (n + 1))));
+  const getColor = (v) => {
+    if (v == null) return "hsl(var(--muted))";
+    if (v >= 0.7) return "#22c55e";
+    if (v >= 0.4) return "#86efac";
+    if (v >= 0.1) return "#d1fae5";
+    if (v >= -0.1) return "hsl(var(--muted))";
+    if (v >= -0.4) return "#fecaca";
+    if (v >= -0.7) return "#f87171";
+    return "#ef4444";
   };
-  const cellSize = Math.max(32, Math.min(60, Math.floor(400 / labels.length)));
+  const textColor = (v) => (v == null || Math.abs(v) < 0.5 ? "inherit" : "white");
   return (
     <div className="overflow-x-auto">
-      <div className="inline-block">
-        <div style={{ display: "grid", gridTemplateColumns: `auto repeat(${labels.length}, ${cellSize}px)` }} className="text-xs">
-          <div />
-          {labels.map(l => (
-            <div key={l} className="text-center font-medium text-muted-foreground pb-1 truncate px-0.5" style={{ width: cellSize }}>{l}</div>
-          ))}
-          {matrix.map((row, i) => (
-            <React.Fragment key={i}>
-              <div className="text-right pr-2 py-0.5 text-muted-foreground font-medium truncate" style={{ maxWidth: 80 }}>{labels[i]}</div>
-              {row.map((val, j) => (
-                <div key={j} title={`${labels[i]} × ${labels[j]}: ${val}`}
-                  style={{ background: getColor(val), width: cellSize, height: cellSize }}
-                  className="flex items-center justify-center text-xs font-mono rounded-sm m-0.5 cursor-default">
-                  {val !== null ? val?.toFixed(2) : ""}
-                </div>
-              ))}
-            </React.Fragment>
-          ))}
-        </div>
+      <div className="inline-grid gap-0.5" style={{ gridTemplateColumns: `auto repeat(${n}, ${cellSize}px)` }}>
+        <div />
+        {labels.map((l) => (
+          <div key={l} className="text-center text-xs text-muted-foreground pb-1 font-medium" style={{ width: cellSize }}>
+            <span className="block truncate px-0.5" title={l}>{truncLabel(l, 8)}</span>
+          </div>
+        ))}
+        {matrix.map((row, i) => (
+          <React.Fragment key={i}>
+            <div className="text-right pr-2 flex items-center text-xs text-muted-foreground font-medium" style={{ maxWidth: 100 }}>
+              <span className="truncate" title={labels[i]}>{truncLabel(labels[i], 10)}</span>
+            </div>
+            {row.map((val, j) => (
+              <div
+                key={j}
+                title={`${labels[i]} × ${labels[j]}: ${val}`}
+                style={{ background: getColor(val), width: cellSize, height: cellSize, color: textColor(val) }}
+                className="flex items-center justify-center text-xs font-mono rounded-sm cursor-default transition-opacity hover:opacity-80"
+              >
+                {val != null ? val.toFixed(2) : ""}
+              </div>
+            ))}
+          </React.Fragment>
+        ))}
       </div>
     </div>
   );
 }
 
+// ── Universal ChartCard ─────────────────────────────────────────────────────
 function ChartCard({ chart }) {
   const type = chart.type;
+  const isHorizontal = type === "bar_h" || type === "bar_grouped_h";
+  const isBar = type === "bar" || type === "bar_grouped" || isHorizontal;
+  const fillColor = type.startsWith("bar_grouped") ? PALETTE[1] : PALETTE[0];
+  const dataKey = type.includes("grouped") ? "value" : "count";
+  const chartHeight = isHorizontal ? Math.max(180, Math.min(360, (chart.data?.length || 8) * 26 + 40)) : 230;
+
+  // Tooltip formatter
+  const fmtTooltip = (value, name) => [fmtNum(value), name === "count" ? "Count" : name === "value" ? chart.y_col : name];
+
   return (
-    <div className="p-4 rounded-xl bg-card border border-border/50" data-testid={`chart-${chart.chart_id}`}>
-      <h3 className="text-sm font-semibold mb-4">{chart.title}</h3>
+    <div className="p-4 rounded-xl bg-card border border-border/50 flex flex-col" data-testid={`chart-${chart.chart_id}`}>
+      <h3 className="text-sm font-semibold mb-1 text-foreground">{chart.title}</h3>
+      {chart.x_col && chart.y_col && (
+        <p className="text-xs text-muted-foreground mb-3">{chart.x_col} · {chart.y_col}</p>
+      )}
+      {!chart.x_col && !chart.y_col && chart.x_col && (
+        <p className="text-xs text-muted-foreground mb-3">{chart.x_col}</p>
+      )}
+
+      {/* HISTOGRAM */}
       {type === "histogram" && (
-        <ResponsiveContainer width="100%" height={200}>
-          <BarChart data={chart.data} margin={{ left: -20 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-            <XAxis dataKey="range" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
-            <YAxis tick={{ fontSize: 10 }} />
-            <Tooltip contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }} />
-            <Bar dataKey="count" fill="#6366f1" radius={[3, 3, 0, 0]} />
+        <ResponsiveContainer width="100%" height={chartHeight}>
+          <BarChart data={chart.data} margin={{ top: 4, right: 8, bottom: 28, left: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+            <XAxis
+              dataKey="range"
+              tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }}
+              angle={-35}
+              textAnchor="end"
+              height={50}
+              interval={Math.ceil((chart.data?.length || 1) / 8)}
+            />
+            <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={fmtNum} width={42} />
+            <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => [fmtNum(v), "Count"]} />
+            <Bar dataKey="count" fill={PALETTE[0]} radius={[3, 3, 0, 0]} maxBarSize={40} />
           </BarChart>
         </ResponsiveContainer>
       )}
+
+      {/* VERTICAL BAR */}
       {(type === "bar" || type === "bar_grouped") && (
-        <ResponsiveContainer width="100%" height={200}>
-          <BarChart data={chart.data} margin={{ left: -20 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-            <XAxis dataKey="category" tick={{ fontSize: 10 }} />
-            <YAxis tick={{ fontSize: 10 }} />
-            <Tooltip contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }} />
-            <Bar dataKey={type === "bar" ? "count" : "value"} fill={type === "bar" ? "#6366f1" : "#06b6d4"} radius={[3, 3, 0, 0]} />
+        <ResponsiveContainer width="100%" height={chartHeight}>
+          <BarChart data={chart.data} margin={{ top: 4, right: 8, bottom: 28, left: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+            <XAxis
+              dataKey="category"
+              tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }}
+              angle={chart.data?.length > 5 ? -30 : 0}
+              textAnchor={chart.data?.length > 5 ? "end" : "middle"}
+              height={chart.data?.length > 5 ? 50 : 30}
+              tickFormatter={(v) => truncLabel(v, 14)}
+            />
+            <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={fmtNum} width={42} />
+            <Tooltip contentStyle={TOOLTIP_STYLE} formatter={fmtTooltip} labelStyle={{ fontWeight: 600 }} />
+            <Bar dataKey={dataKey} fill={fillColor} radius={[3, 3, 0, 0]} maxBarSize={48} />
           </BarChart>
         </ResponsiveContainer>
       )}
+
+      {/* HORIZONTAL BAR */}
+      {isHorizontal && (
+        <ResponsiveContainer width="100%" height={chartHeight}>
+          <BarChart data={chart.data} layout="vertical" margin={{ top: 4, right: 16, bottom: 4, left: 4 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+            <XAxis type="number" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={fmtNum} />
+            <YAxis
+              type="category"
+              dataKey="category"
+              tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+              tickFormatter={(v) => truncLabel(v, 18)}
+              width={110}
+            />
+            <Tooltip contentStyle={TOOLTIP_STYLE} formatter={fmtTooltip} />
+            <Bar dataKey={dataKey} fill={fillColor} radius={[0, 3, 3, 0]} maxBarSize={20} />
+          </BarChart>
+        </ResponsiveContainer>
+      )}
+
+      {/* SCATTER */}
       {type === "scatter" && (
-        <ResponsiveContainer width="100%" height={200}>
-          <ScatterChart margin={{ left: -20 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-            <XAxis dataKey="x" name={chart.x_col} tick={{ fontSize: 10 }} type="number" />
-            <YAxis dataKey="y" name={chart.y_col} tick={{ fontSize: 10 }} />
-            <Tooltip cursor={{ strokeDasharray: "3 3" }} contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }} />
-            <Scatter data={chart.data} fill="#6366f1" opacity={0.7} />
+        <ResponsiveContainer width="100%" height={chartHeight}>
+          <ScatterChart margin={{ top: 4, right: 16, bottom: 20, left: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <XAxis
+              dataKey="x"
+              name={chart.x_col}
+              tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+              tickFormatter={fmtNum}
+              type="number"
+              label={{ value: chart.x_col, position: "insideBottom", offset: -8, fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+            />
+            <YAxis
+              dataKey="y"
+              name={chart.y_col}
+              tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+              tickFormatter={fmtNum}
+              width={44}
+              label={{ value: chart.y_col, angle: -90, position: "insideLeft", offset: 12, fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+            />
+            <Tooltip
+              cursor={{ strokeDasharray: "3 3" }}
+              contentStyle={TOOLTIP_STYLE}
+              formatter={(v, name) => [fmtNum(v), name === "x" ? chart.x_col : chart.y_col]}
+            />
+            <Scatter data={chart.data} fill={PALETTE[0]} opacity={0.65} />
           </ScatterChart>
         </ResponsiveContainer>
       )}
+
+      {/* LINE (time series) */}
+      {type === "line" && (
+        <ResponsiveContainer width="100%" height={chartHeight}>
+          <LineChart data={chart.data} margin={{ top: 4, right: 16, bottom: 28, left: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+            <XAxis
+              dataKey="date"
+              tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }}
+              angle={-30}
+              textAnchor="end"
+              height={50}
+              interval={Math.ceil((chart.data?.length || 1) / 8)}
+            />
+            <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={fmtNum} width={44} />
+            <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => [fmtNum(v), chart.y_col]} />
+            <Line type="monotone" dataKey="value" stroke={PALETTE[0]} dot={chart.data?.length < 40} strokeWidth={2} />
+          </LineChart>
+        </ResponsiveContainer>
+      )}
+
+      {/* HEATMAP */}
       {type === "heatmap" && <HeatmapChart chart={chart} />}
     </div>
   );
 }
 
+// ── Categorical section with high-cardinality split ──────────────────────────
+function CategoricalTab({ catSummaries, analyticalCatCols, identifierCols, highCardCols }) {
+  const [showIdentifiers, setShowIdentifiers] = useState(false);
+
+  // Order: analytical first, then high-card
+  const analyticalEntries = (analyticalCatCols || []).filter(c => catSummaries[c]);
+  const highCardEntries = Object.keys(highCardCols || {}).filter(c => catSummaries[c]);
+  const idEntries = (identifierCols || []).filter(c => catSummaries[c]);
+
+  if (Object.keys(catSummaries).length === 0) {
+    return <p className="text-sm text-muted-foreground text-center py-10">No categorical columns found.</p>;
+  }
+
+  return (
+    <div className="space-y-6">
+      {analyticalEntries.length > 0 && (
+        <div>
+          <h3 className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-3">
+            Analytical Dimensions ({analyticalEntries.length})
+          </h3>
+          <div className="grid sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
+            {analyticalEntries.map((col) => {
+              const s = catSummaries[col];
+              return (
+                <div key={col} className="p-4 rounded-xl bg-card border border-border/50">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-sm font-semibold truncate">{col}</h4>
+                    <span className="text-xs text-muted-foreground shrink-0 ml-2">{s.unique_count} unique</span>
+                  </div>
+                  {s.null_count > 0 && (
+                    <p className="text-xs text-amber-500 mb-2">{s.null_count} nulls</p>
+                  )}
+                  <div className="space-y-1.5">
+                    {Object.entries(s.top_values || {}).slice(0, 8).map(([val, count]) => {
+                      const total = Object.values(s.top_values).reduce((a, b) => a + b, 0);
+                      const pct = total > 0 ? Math.round(count / total * 100) : 0;
+                      return (
+                        <div key={val} className="flex items-center gap-2 text-xs">
+                          <span className="w-28 truncate text-muted-foreground" title={val}>{val}</span>
+                          <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                            <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${pct}%` }} />
+                          </div>
+                          <span className="text-muted-foreground w-8 text-right tabular-nums">{count}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {(highCardEntries.length > 0 || idEntries.length > 0) && (
+        <div>
+          <button
+            className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors mb-3"
+            onClick={() => setShowIdentifiers(!showIdentifiers)}
+            data-testid="show-identifier-cols-toggle"
+          >
+            <Tag className="h-3.5 w-3.5" />
+            <span>
+              {showIdentifiers ? "Hide" : "Show"} identifier / high-cardinality columns
+              ({highCardEntries.length + idEntries.length})
+            </span>
+          </button>
+          {showIdentifiers && (
+            <div className="grid sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 opacity-70">
+              {[...highCardEntries, ...idEntries].map((col) => {
+                const s = catSummaries[col];
+                if (!s) return null;
+                return (
+                  <div key={col} className="p-4 rounded-xl bg-muted/40 border border-border/30">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-sm font-medium truncate text-muted-foreground">{col}</h4>
+                      <span className="text-xs text-muted-foreground shrink-0 ml-2">{s.unique_count} unique</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {idEntries.includes(col) ? "Identifier-like column" : "High cardinality — not shown in charts"}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
 export default function AnalysisPage() {
   const { datasetId } = useParams();
   const navigate = useNavigate();
@@ -142,14 +364,12 @@ export default function AnalysisPage() {
     finally { setLoading(false); }
   }, [datasetId]);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   useEffect(() => {
-    const isRunning = analysis?.status === "pending" || analysis?.status === "running"
+    const running = analysis?.status === "pending" || analysis?.status === "running"
       || dataset?.status === "processing";
-    if (isRunning) {
+    if (running) {
       pollRef.current = setInterval(fetchData, 3000);
     } else {
       clearInterval(pollRef.current);
@@ -172,13 +392,22 @@ export default function AnalysisPage() {
   const charts = r.charts || [];
   const numericSummaries = r.numeric_summaries || {};
   const catSummaries = r.categorical_summaries || {};
+  const analyticalNumCols = r.analytical_numeric_columns || r.numeric_columns || [];
+  const analyticalCatCols = r.analytical_categorical_columns || [];
+  const identifierCols = r.identifier_columns || [];
+  const highCardCols = r.high_cardinality_columns || {};
   const isCompleted = analysis?.status === "completed";
-  const isRunning = analysis?.status === "pending" || analysis?.status === "running" || dataset?.status === "processing";
+  const isRunning = analysis?.status === "pending" || analysis?.status === "running"
+    || dataset?.status === "processing";
   const isFailed = analysis?.status === "failed";
+
+  // Determine optimal chart grid cols hint (used in ChartCard grid)
+  const singleWideCharts = charts.filter(c => c.type === "heatmap" || c.type === "line");
+  const regularCharts = charts.filter(c => c.type !== "heatmap" && c.type !== "line");
 
   return (
     <Layout>
-      <div className="p-6 max-w-6xl" data-testid="analysis-page">
+      <div className="p-6 w-full max-w-[1800px] mx-auto" data-testid="analysis-page">
         <Button variant="ghost" size="sm" className="gap-1 mb-4 text-muted-foreground" onClick={() => navigate(-1)}>
           <ArrowLeft className="h-4 w-4" /> Back
         </Button>
@@ -201,15 +430,22 @@ export default function AnalysisPage() {
               </Button>
             )}
             {isCompleted && (
-              <Button variant="outline" size="sm" onClick={() => navigate(`/datasets/${datasetId}/insights`)} className="border-purple-300 text-purple-600 dark:border-purple-700 dark:text-purple-400 gap-1" data-testid="get-insights-btn">
+              <Button variant="outline" size="sm"
+                onClick={() => navigate(`/datasets/${datasetId}/insights`)}
+                className="border-purple-300 text-purple-600 dark:border-purple-700 dark:text-purple-400 gap-1"
+                data-testid="get-insights-btn"
+              >
                 Get AI Insights
               </Button>
             )}
           </div>
         </div>
 
-        {/* Loading/Failed/Empty states */}
-        {loading && <div className="grid grid-cols-4 gap-4 mb-6">{[1,2,3,4].map(i => <Skeleton key={i} className="h-24 rounded-xl" />)}</div>}
+        {loading && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            {[1,2,3,4].map(i => <Skeleton key={i} className="h-24 rounded-xl" />)}
+          </div>
+        )}
 
         {isFailed && (
           <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20 flex items-start gap-2 text-sm text-destructive mb-6" data-testid="analysis-failed">
@@ -219,7 +455,7 @@ export default function AnalysisPage() {
         )}
 
         {isRunning && !isCompleted && (
-          <div className="text-center py-16 text-muted-foreground" data-testid="analysis-running">
+          <div className="text-center py-20 text-muted-foreground" data-testid="analysis-running">
             <Loader2 className="h-10 w-10 animate-spin mx-auto mb-3 text-primary" />
             <p className="font-medium">Analysis in progress...</p>
             <p className="text-sm mt-1">This may take a moment depending on dataset size.</p>
@@ -227,10 +463,10 @@ export default function AnalysisPage() {
         )}
 
         {!loading && !analysis && !isRunning && (
-          <div className="text-center py-16 border border-dashed border-border rounded-xl" data-testid="no-analysis">
+          <div className="text-center py-20 border border-dashed border-border rounded-xl" data-testid="no-analysis">
             <BarChart2 className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
             <p className="font-medium mb-1">No analysis yet</p>
-            <p className="text-sm text-muted-foreground mb-4">Run analysis to generate statistics and charts</p>
+            <p className="text-sm text-muted-foreground mb-4">Run deterministic analysis to generate statistics and charts</p>
             <Button className="gradient-indigo text-white gap-2" onClick={triggerAnalysis} disabled={triggering}>
               <Play className="h-4 w-4" /> Run Analysis
             </Button>
@@ -240,120 +476,168 @@ export default function AnalysisPage() {
         {isCompleted && (
           <>
             {/* Overview stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-6 gap-4 mb-6">
               <QualityScore score={r.data_quality_score} />
               <StatCard label="Total Rows" value={r.row_count?.toLocaleString()} />
-              <StatCard label="Columns" value={r.column_count} sub={`${r.numeric_columns?.length || 0} numeric, ${r.categorical_columns?.length || 0} categorical`} />
-              <StatCard label="Duplicate Rows" value={r.duplicate_rows} color={r.duplicate_rows > 0 ? "text-amber-500" : "text-green-500"} />
+              <StatCard label="Columns" value={r.column_count}
+                sub={`${analyticalNumCols.length} numeric · ${analyticalCatCols.length} categorical`} />
+              <StatCard label="Duplicate Rows" value={r.duplicate_rows}
+                color={r.duplicate_rows > 0 ? "text-amber-500" : "text-green-500"} />
+              {identifierCols.length > 0 && (
+                <StatCard label="ID-like Cols" value={identifierCols.length}
+                  sub="excluded from charts" color="text-muted-foreground" />
+              )}
+              {r.date_columns?.length > 0 && (
+                <StatCard label="Date Columns" value={r.date_columns.length} color="text-purple-500" />
+              )}
             </div>
 
+            {/* Identifier chip list */}
+            {identifierCols.length > 0 && (
+              <div className="flex items-center gap-2 flex-wrap mb-4 p-3 rounded-lg bg-muted/40 border border-border/30">
+                <span className="text-xs text-muted-foreground font-medium flex items-center gap-1">
+                  <Info className="h-3.5 w-3.5" />
+                  Excluded from charts:
+                </span>
+                {identifierCols.map((c) => (
+                  <span key={c} className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border/50 font-mono">
+                    {c}
+                  </span>
+                ))}
+              </div>
+            )}
+
             <Tabs defaultValue="charts">
-              <TabsList className="mb-4">
-                <TabsTrigger value="charts" data-testid="charts-tab">Charts ({charts.length})</TabsTrigger>
-                <TabsTrigger value="numeric" data-testid="numeric-tab">Numeric Stats</TabsTrigger>
-                <TabsTrigger value="categorical" data-testid="categorical-tab">Categorical</TabsTrigger>
-                <TabsTrigger value="missing" data-testid="missing-tab">Missing Values</TabsTrigger>
+              <TabsList className="mb-4 flex-wrap h-auto">
+                <TabsTrigger value="charts" data-testid="charts-tab">
+                  Charts {charts.length > 0 && `(${charts.length})`}
+                </TabsTrigger>
+                <TabsTrigger value="numeric" data-testid="numeric-tab">
+                  Numeric Stats
+                </TabsTrigger>
+                <TabsTrigger value="categorical" data-testid="categorical-tab">
+                  Categorical
+                </TabsTrigger>
+                <TabsTrigger value="missing" data-testid="missing-tab">
+                  Missing Values
+                </TabsTrigger>
               </TabsList>
 
+              {/* ── Charts tab ── */}
               <TabsContent value="charts">
                 {charts.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-8">No charts generated (dataset may be purely text-based).</p>
+                  <div className="text-center py-10 border border-dashed border-border rounded-xl">
+                    <BarChart2 className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">No charts generated — dataset may lack analytical numeric or categorical columns.</p>
+                  </div>
                 ) : (
-                  <div className="grid md:grid-cols-2 gap-4">
-                    {charts.map(c => <ChartCard key={c.chart_id} chart={c} />)}
+                  <div className="space-y-4">
+                    {/* Wide charts (heatmap, line) span full row */}
+                    {singleWideCharts.map(c => (
+                      <div key={c.chart_id} className="w-full">
+                        <ChartCard chart={c} />
+                      </div>
+                    ))}
+                    {/* Regular charts in responsive grid */}
+                    {regularCharts.length > 0 && (
+                      <div className="grid sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
+                        {regularCharts.map(c => <ChartCard key={c.chart_id} chart={c} />)}
+                      </div>
+                    )}
                   </div>
                 )}
               </TabsContent>
 
+              {/* ── Numeric stats tab ── */}
               <TabsContent value="numeric">
                 {Object.keys(numericSummaries).length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-8">No numeric columns found.</p>
+                  <p className="text-sm text-muted-foreground text-center py-10">No numeric columns found.</p>
                 ) : (
                   <div className="overflow-x-auto rounded-xl border border-border" data-testid="numeric-table">
                     <table className="w-full text-xs">
                       <thead>
-                        <tr className="bg-muted/50">
-                          {["Column","Count","Min","Max","Mean","Median","Std Dev","Outliers"].map(h => (
-                            <th key={h} className="px-3 py-2 text-left font-medium text-muted-foreground border-b border-border whitespace-nowrap">{h}</th>
+                        <tr className="bg-muted/50 sticky top-0">
+                          {["Column", "Type", "Count", "Min", "Max", "Mean", "Median", "Std Dev", "Outliers"].map(h => (
+                            <th key={h} className="px-3 py-2.5 text-left font-semibold text-muted-foreground border-b border-border whitespace-nowrap">{h}</th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
-                        {Object.entries(numericSummaries).map(([col, s], i) => (
-                          <tr key={col} className={i % 2 === 0 ? "bg-background" : "bg-muted/20"}>
-                            <td className="px-3 py-2 font-medium border-b border-border/50">{col}</td>
-                            <td className="px-3 py-2 font-mono border-b border-border/50">{s.count?.toLocaleString()}</td>
-                            <td className="px-3 py-2 font-mono border-b border-border/50">{s.min?.toFixed(2)}</td>
-                            <td className="px-3 py-2 font-mono border-b border-border/50">{s.max?.toFixed(2)}</td>
-                            <td className="px-3 py-2 font-mono border-b border-border/50">{s.mean?.toFixed(2)}</td>
-                            <td className="px-3 py-2 font-mono border-b border-border/50">{s.median?.toFixed(2)}</td>
-                            <td className="px-3 py-2 font-mono border-b border-border/50">{s.std?.toFixed(2)}</td>
-                            <td className={`px-3 py-2 font-mono border-b border-border/50 ${s.outlier_count > 0 ? "text-amber-500" : ""}`}>{s.outlier_count}</td>
-                          </tr>
-                        ))}
+                        {Object.entries(numericSummaries).map(([col, s], i) => {
+                          const isId = identifierCols.includes(col);
+                          return (
+                            <tr key={col} className={`${i % 2 === 0 ? "bg-background" : "bg-muted/20"} ${isId ? "opacity-50" : ""}`}>
+                              <td className="px-3 py-2 font-medium border-b border-border/50">
+                                {col}
+                                {isId && <span className="ml-1.5 text-xs text-muted-foreground">(ID)</span>}
+                              </td>
+                              <td className="px-3 py-2 font-mono border-b border-border/50 text-muted-foreground">
+                                {r.dtypes?.[col]?.replace("64", "").replace("32", "") || "—"}
+                              </td>
+                              <td className="px-3 py-2 font-mono border-b border-border/50 tabular-nums">{s.count?.toLocaleString()}</td>
+                              <td className="px-3 py-2 font-mono border-b border-border/50 tabular-nums">{s.min != null ? fmtNum(s.min) : "—"}</td>
+                              <td className="px-3 py-2 font-mono border-b border-border/50 tabular-nums">{s.max != null ? fmtNum(s.max) : "—"}</td>
+                              <td className="px-3 py-2 font-mono border-b border-border/50 tabular-nums">{s.mean != null ? fmtNum(s.mean) : "—"}</td>
+                              <td className="px-3 py-2 font-mono border-b border-border/50 tabular-nums">{s.median != null ? fmtNum(s.median) : "—"}</td>
+                              <td className="px-3 py-2 font-mono border-b border-border/50 tabular-nums">{s.std != null ? fmtNum(s.std) : "—"}</td>
+                              <td className={`px-3 py-2 font-mono border-b border-border/50 tabular-nums ${s.outlier_count > 0 ? "text-amber-500" : "text-green-600"}`}>
+                                {s.outlier_count}
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
                 )}
               </TabsContent>
 
+              {/* ── Categorical tab ── */}
               <TabsContent value="categorical">
-                {Object.keys(catSummaries).length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-8">No categorical columns found.</p>
-                ) : (
-                  <div className="grid md:grid-cols-2 gap-4">
-                    {Object.entries(catSummaries).map(([col, s]) => (
-                      <div key={col} className="p-4 rounded-xl bg-card border border-border/50">
-                        <h3 className="text-sm font-semibold mb-2">{col}</h3>
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground mb-3">
-                          <span>{s.unique_count} unique values</span>
-                          {s.null_count > 0 && <span className="text-amber-500">{s.null_count} nulls</span>}
-                        </div>
-                        <div className="space-y-1">
-                          {Object.entries(s.top_values || {}).slice(0, 8).map(([val, count]) => {
-                            const total = Object.values(s.top_values).reduce((a, b) => a + b, 0);
-                            const pct = Math.round(count / total * 100);
-                            return (
-                              <div key={val} className="flex items-center gap-2 text-xs">
-                                <span className="w-32 truncate text-muted-foreground">{val}</span>
-                                <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                                  <div className="h-full bg-primary rounded-full" style={{ width: `${pct}%` }} />
-                                </div>
-                                <span className="text-muted-foreground w-8 text-right">{count}</span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <CategoricalTab
+                  catSummaries={catSummaries}
+                  analyticalCatCols={analyticalCatCols}
+                  identifierCols={identifierCols}
+                  highCardCols={highCardCols}
+                />
               </TabsContent>
 
+              {/* ── Missing values tab ── */}
               <TabsContent value="missing">
                 <div className="overflow-x-auto rounded-xl border border-border" data-testid="missing-table">
                   <table className="w-full text-xs">
                     <thead>
-                      <tr className="bg-muted/50">
-                        {["Column","Missing Count","Missing %","Status"].map(h => (
-                          <th key={h} className="px-3 py-2 text-left font-medium text-muted-foreground border-b border-border">{h}</th>
+                      <tr className="bg-muted/50 sticky top-0">
+                        {["Column", "Missing Count", "Missing %", "Assessment"].map(h => (
+                          <th key={h} className="px-3 py-2.5 text-left font-semibold text-muted-foreground border-b border-border whitespace-nowrap">{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {Object.entries(r.missing_values || {}).map(([col, count], i) => {
-                        const pct = r.missing_percentage?.[col] || 0;
-                        return (
-                          <tr key={col} className={i % 2 === 0 ? "bg-background" : "bg-muted/20"}>
-                            <td className="px-3 py-2 font-medium border-b border-border/50">{col}</td>
-                            <td className="px-3 py-2 font-mono border-b border-border/50">{count?.toLocaleString()}</td>
-                            <td className="px-3 py-2 font-mono border-b border-border/50">{pct}%</td>
-                            <td className={`px-3 py-2 border-b border-border/50 ${count > 0 ? "text-amber-500" : "text-green-500"}`}>
-                              {count === 0 ? "No missing" : pct > 30 ? "High missing" : "Low missing"}
-                            </td>
-                          </tr>
-                        );
-                      })}
+                      {Object.entries(r.missing_values || {})
+                        .sort(([, a], [, b]) => b - a)
+                        .map(([col, count], i) => {
+                          const pct = r.missing_percentage?.[col] ?? 0;
+                          const level = count === 0 ? "none" : pct > 30 ? "high" : pct > 5 ? "moderate" : "low";
+                          const levelColor = { none: "text-green-600", low: "text-emerald-500", moderate: "text-amber-500", high: "text-red-500" }[level];
+                          const levelLabel = { none: "Complete", low: "Low missing", moderate: "Moderate", high: "High missing" }[level];
+                          return (
+                            <tr key={col} className={i % 2 === 0 ? "bg-background" : "bg-muted/20"}>
+                              <td className="px-3 py-2 font-medium border-b border-border/50">{col}</td>
+                              <td className="px-3 py-2 font-mono tabular-nums border-b border-border/50">{count?.toLocaleString()}</td>
+                              <td className="px-3 py-2 border-b border-border/50">
+                                <div className="flex items-center gap-2">
+                                  <div className="flex-1 h-1.5 bg-muted rounded-full max-w-[80px] overflow-hidden">
+                                    <div className={`h-full rounded-full ${level === "none" ? "bg-green-500" : level === "high" ? "bg-red-500" : "bg-amber-500"}`}
+                                      style={{ width: `${Math.min(pct, 100)}%` }} />
+                                  </div>
+                                  <span className="font-mono tabular-nums">{pct}%</span>
+                                </div>
+                              </td>
+                              <td className={`px-3 py-2 border-b border-border/50 ${levelColor} font-medium`}>{levelLabel}</td>
+                            </tr>
+                          );
+                        })}
                     </tbody>
                   </table>
                 </div>

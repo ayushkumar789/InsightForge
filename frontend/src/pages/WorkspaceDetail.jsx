@@ -118,7 +118,7 @@ export default function WorkspaceDetail() {
 
   return (
     <Layout>
-      <div className="p-6 max-w-5xl" data-testid="workspace-detail-page">
+      <div className="p-6 w-full max-w-screen-2xl mx-auto" data-testid="workspace-detail-page">
         {/* Breadcrumb */}
         <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-6">
           <button onClick={() => navigate("/workspaces")} className="hover:text-foreground flex items-center gap-1">
@@ -141,7 +141,7 @@ export default function WorkspaceDetail() {
         </div>
 
         {loading ? (
-          <div className="grid md:grid-cols-3 gap-4">
+          <div className="grid md:grid-cols-3 2xl:grid-cols-4 gap-4">
             {[1,2,3].map(i => <Skeleton key={i} className="h-32 rounded-xl" />)}
           </div>
         ) : projects.length === 0 ? (
@@ -154,7 +154,7 @@ export default function WorkspaceDetail() {
             </Button>
           </div>
         ) : (
-          <div className="grid md:grid-cols-3 gap-4">
+          <div className="grid md:grid-cols-3 2xl:grid-cols-4 gap-4">
             {projects.map(p => (
               <ProjectCard
                 key={p.project_id}

@@ -51,7 +51,7 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <div className="p-6 max-w-5xl" data-testid="dashboard-page">
+      <div className="p-6 w-full max-w-screen-2xl mx-auto" data-testid="dashboard-page">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold tracking-tight">
