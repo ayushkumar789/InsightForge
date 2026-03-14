@@ -1,13 +1,12 @@
 """
-AI insights generation using Google Gemini via emergentintegrations.
+AI insights generation using Google Gemini.
 Sends structured analysis summary to Gemini — NOT raw dataset rows.
 """
 import os
 import json
-import uuid
 import logging
 from datetime import datetime, timezone
-from emergentintegrations.llm.chat import LlmChat, UserMessage
+import google.generativeai as genai
 
 logger = logging.getLogger(__name__)
 
@@ -113,16 +112,13 @@ async def generate_insights(dataset: dict, analysis: dict) -> dict:
 
     prompt = _build_prompt(dataset, analysis)
 
-    chat = LlmChat(
-        api_key=GEMINI_API_KEY,
-        session_id=f"insight_{uuid.uuid4().hex}",
-        system_message=SYSTEM_PROMPT,
-    ).with_model("gemini", GEMINI_MODEL)
-
-    response = await chat.send_message(UserMessage(text=prompt))
-
-    # Parse JSON response
-    raw = response.strip()
+    genai.configure(api_key=GEMINI_API_KEY)
+    model = genai.GenerativeModel(
+        model_name=GEMINI_MODEL,
+        system_instruction=SYSTEM_PROMPT,
+    )
+    resp = await model.generate_content_async(prompt)
+    raw = resp.text.strip()
     # Remove potential markdown fences
     if raw.startswith("```"):
         raw = raw.split("```")[1]
