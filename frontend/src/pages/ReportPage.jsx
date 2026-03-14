@@ -61,10 +61,20 @@ export default function ReportPage() {
     } finally { setGenerating(false); }
   };
 
-  const downloadReport = () => {
+  const downloadReport = async () => {
     if (!report?.report_id) return;
-    const url = `${BACKEND_URL}/api/reports/${report.report_id}/download`;
-    window.open(url, "_blank");
+    try {
+      const url = `${API}/reports/${report.report_id}/download`;
+      const { data } = await axios.get(url, { responseType: "blob" });
+      const blob = new Blob([data], { type: "application/pdf" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `${dataset?.name || "report"}.pdf`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    } catch {
+      toast.error("Failed to download report");
+    }
   };
 
   const canGenerate = dataset?.status === "analysis_complete" || dataset?.status === "insights_generated";
