@@ -41,7 +41,7 @@ export default function DatasetDetail() {
   const fetchPreview = async (sheet = null) => {
     try {
       const params = sheet ? `?sheet=${encodeURIComponent(sheet)}` : "";
-      const res = await axios.get(`${API}/datasets/${datasetId}/preview${params}`, { withCredentials: true });
+      const res = await axios.get(`${API}/datasets/${datasetId}/preview${params}`);
       setPreview(res.data);
     } catch (err) {
       toast.error("Failed to load preview");
@@ -50,7 +50,7 @@ export default function DatasetDetail() {
 
   useEffect(() => {
     Promise.all([
-      axios.get(`${API}/datasets/${datasetId}`, { withCredentials: true }),
+      axios.get(`${API}/datasets/${datasetId}`),
     ]).then(([dsRes]) => {
       setDataset(dsRes.data);
     }).catch(() => toast.error("Dataset not found"))

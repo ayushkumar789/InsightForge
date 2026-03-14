@@ -1,140 +1,117 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useUser } from "@clerk/clerk-react";
 import axios from "axios";
 import { toast } from "sonner";
-import { useAuth } from "../contexts/AuthContext";
+import { User, Save } from "lucide-react";
 import Layout from "../components/Layout";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
-import { Separator } from "../components/ui/separator";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
-import { Loader2, User, Key, Shield } from "lucide-react";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 export default function Settings() {
-  const { user, checkAuth } = useAuth();
-  const [name, setName] = useState(user?.name || "");
-  const [savingName, setSavingName] = useState(false);
-  const [pwForm, setPwForm] = useState({ current_password: "", new_password: "", confirm: "" });
-  const [savingPw, setSavingPw] = useState(false);
+  const { user: clerkUser } = useUser();
+  const [name, setName] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  const initials = (user?.name || "U").split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const { data } = await axios.get(`${API}/auth/me`);
+        setName(data.name || "");
+      } catch {
+        // fallback to Clerk user data
+        setName(clerkUser?.fullName || clerkUser?.firstName || "");
+      }
+    };
+    fetchProfile();
+  }, [clerkUser]);
 
-  const saveName = async (e) => {
-    e.preventDefault();
-    setSavingName(true);
+  const handleSave = async () => {
+    setSaving(true);
     try {
-      await axios.put(`${API}/auth/profile`, { name }, { withCredentials: true });
-      await checkAuth();
+      await axios.put(`${API}/auth/profile`, { name });
       toast.success("Profile updated");
-    } catch { toast.error("Failed to update"); }
-    finally { setSavingName(false); }
+    } catch (e) {
+      toast.error("Failed to update profile");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const savePassword = async (e) => {
-    e.preventDefault();
-    if (pwForm.new_password !== pwForm.confirm) {
-      toast.error("Passwords don't match");
-      return;
-    }
-    if (pwForm.new_password.length < 6) {
-      toast.error("Password must be at least 6 characters");
-      return;
-    }
-    setSavingPw(true);
-    try {
-      await axios.post(`${API}/auth/change-password`, {
-        current_password: pwForm.current_password,
-        new_password: pwForm.new_password,
-      }, { withCredentials: true });
-      toast.success("Password changed");
-      setPwForm({ current_password: "", new_password: "", confirm: "" });
-    } catch (err) {
-      toast.error(err.response?.data?.detail || "Failed to change password");
-    } finally { setSavingPw(false); }
-  };
+  const email = clerkUser?.primaryEmailAddress?.emailAddress || "";
+  const picture = clerkUser?.imageUrl;
+  const initials = (name || "U").split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 
   return (
     <Layout>
       <div className="p-6 w-full max-w-4xl mx-auto" data-testid="settings-page">
-        <h1 className="text-3xl font-bold tracking-tight mb-8">Settings</h1>
+        <h1 className="text-2xl font-bold mb-6">Settings</h1>
 
-        {/* Profile */}
-        <section className="mb-8">
-          <h2 className="text-base font-semibold mb-4 flex items-center gap-2">
-            <User className="h-4 w-4" /> Profile
-          </h2>
-          <div className="p-5 rounded-xl bg-card border border-border/50">
-            <div className="flex items-center gap-4 mb-5">
-              <Avatar className="h-14 w-14">
-                <AvatarImage src={user?.picture} />
-                <AvatarFallback className="gradient-indigo text-white text-lg">{initials}</AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="font-semibold">{user?.name}</p>
-                <p className="text-sm text-muted-foreground">{user?.email}</p>
-                <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-                  <Shield className="h-3 w-3" />
-                  {user?.auth_provider === "google" ? "Google Account" : "Email/Password"}
-                </p>
+        <div className="space-y-6">
+          {/* Profile Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <User className="h-5 w-5" /> Profile
+              </CardTitle>
+              <CardDescription>Manage your display name. Authentication is managed by Clerk.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Avatar & email (read-only from Clerk) */}
+              <div className="flex items-center gap-4">
+                <Avatar className="h-16 w-16">
+                  <AvatarImage src={picture} />
+                  <AvatarFallback className="text-lg gradient-indigo text-white">{initials}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-medium">{name || "User"}</p>
+                  <p className="text-sm text-muted-foreground">{email}</p>
+                </div>
               </div>
-            </div>
-            <Separator className="mb-5" />
-            <form onSubmit={saveName} className="space-y-3">
-              <div>
-                <Label>Display name</Label>
-                <Input className="mt-1" value={name} onChange={e => setName(e.target.value)} data-testid="name-input" />
+
+              {/* Display name */}
+              <div className="space-y-2">
+                <Label htmlFor="name">Display Name</Label>
+                <Input
+                  id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Your display name"
+                  data-testid="settings-name-input"
+                />
               </div>
-              <div>
-                <Label>Email</Label>
-                <Input className="mt-1" value={user?.email || ""} disabled />
-              </div>
-              <Button type="submit" size="sm" className="gradient-indigo text-white" disabled={savingName} data-testid="save-profile-btn">
-                {savingName ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                Save changes
+
+              <Button onClick={handleSave} disabled={saving} data-testid="settings-save-btn">
+                <Save className="h-4 w-4 mr-2" />
+                {saving ? "Saving..." : "Save Changes"}
               </Button>
-            </form>
-          </div>
-        </section>
+            </CardContent>
+          </Card>
 
-        {/* Password */}
-        {user?.auth_provider !== "google" && (
-          <section>
-            <h2 className="text-base font-semibold mb-4 flex items-center gap-2">
-              <Key className="h-4 w-4" /> Change Password
-            </h2>
-            <div className="p-5 rounded-xl bg-card border border-border/50">
-              <form onSubmit={savePassword} className="space-y-3">
+          {/* Account info */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Account</CardTitle>
+              <CardDescription>Your account is managed through Clerk. Use the user menu to manage your password, linked accounts, and security settings.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <Label>Current password</Label>
-                  <Input className="mt-1" type="password" value={pwForm.current_password}
-                    onChange={e => setPwForm({ ...pwForm, current_password: e.target.value })} data-testid="current-password-input" />
+                  <p className="text-muted-foreground">Email</p>
+                  <p className="font-medium">{email}</p>
                 </div>
                 <div>
-                  <Label>New password</Label>
-                  <Input className="mt-1" type="password" value={pwForm.new_password}
-                    onChange={e => setPwForm({ ...pwForm, new_password: e.target.value })} data-testid="new-password-input" />
+                  <p className="text-muted-foreground">Auth Provider</p>
+                  <p className="font-medium">Clerk</p>
                 </div>
-                <div>
-                  <Label>Confirm new password</Label>
-                  <Input className="mt-1" type="password" value={pwForm.confirm}
-                    onChange={e => setPwForm({ ...pwForm, confirm: e.target.value })} data-testid="confirm-password-input" />
-                </div>
-                <Button type="submit" size="sm" variant="outline" disabled={savingPw} data-testid="save-password-btn">
-                  {savingPw ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                  Update password
-                </Button>
-              </form>
-            </div>
-          </section>
-        )}
-
-        {user?.auth_provider === "google" && (
-          <div className="p-4 rounded-lg bg-muted/50 text-sm text-muted-foreground">
-            Password management is not available for Google accounts.
-          </div>
-        )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </Layout>
   );

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { useAuth } from "../contexts/AuthContext";
+import { useUser } from "@clerk/clerk-react";
 import Layout from "../components/Layout";
 import { Button } from "../components/ui/button";
 import { Skeleton } from "../components/ui/skeleton";
@@ -26,12 +26,12 @@ function StatCard({ icon: Icon, label, value, color = "text-primary" }) {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user: clerkUser } = useUser();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    axios.get(`${API}/dashboard/stats`, { withCredentials: true })
+    axios.get(`${API}/dashboard/stats`)
       .then(r => setStats(r.data))
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -55,7 +55,7 @@ export default function Dashboard() {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold tracking-tight">
-            Welcome back, {user?.name?.split(" ")[0]}
+            Welcome back, {clerkUser?.firstName || "there"}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm">Here's what's happening in your workspace.</p>
         </div>

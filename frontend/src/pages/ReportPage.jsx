@@ -28,10 +28,10 @@ export default function ReportPage() {
 
   const fetchData = useCallback(async () => {
     try {
-      const dsRes = await axios.get(`${API}/datasets/${datasetId}`, { withCredentials: true });
+      const dsRes = await axios.get(`${API}/datasets/${datasetId}`);
       setDataset(dsRes.data);
       try {
-        const repRes = await axios.get(`${API}/datasets/${datasetId}/report`, { withCredentials: true });
+        const repRes = await axios.get(`${API}/datasets/${datasetId}/report`);
         setReport(repRes.data);
       } catch {}
     } catch { toast.error("Dataset not found"); }
@@ -53,7 +53,7 @@ export default function ReportPage() {
   const generateReport = async () => {
     setGenerating(true);
     try {
-      await axios.post(`${API}/datasets/${datasetId}/report`, {}, { withCredentials: true });
+      await axios.post(`${API}/datasets/${datasetId}/report`, {});
       toast.success("Report generation started");
       fetchData();
     } catch (err) {

@@ -14,21 +14,6 @@ def now_utc() -> datetime:
 
 # ── Auth Models ──────────────────────────────────────────────────────────────
 
-class UserCreate(BaseModel):
-    email: str
-    name: str
-    password: str
-
-
-class UserLogin(BaseModel):
-    email: str
-    password: str
-
-
-class GoogleSessionExchange(BaseModel):
-    session_id: str
-
-
 class UserResponse(BaseModel):
     user_id: str
     email: str
@@ -190,8 +175,3 @@ class ProjectStats(BaseModel):
 
 class ProfileUpdate(BaseModel):
     name: str
-
-
-class PasswordChange(BaseModel):
-    current_password: str
-    new_password: str

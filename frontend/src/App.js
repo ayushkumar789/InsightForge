@@ -1,10 +1,10 @@
 import React from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import { ClerkProvider, SignedIn, SignedOut, RedirectToSignIn, useAuth, useUser } from "@clerk/clerk-react";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "./components/ui/sonner";
-import { AuthProvider } from "./contexts/AuthContext";
-import ProtectedRoute from "./components/ProtectedRoute";
-import AuthCallback from "./components/AuthCallback";
+import AxiosInterceptor from "./components/AxiosInterceptor";
+import UserSync from "./components/UserSync";
 
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
@@ -21,18 +21,29 @@ import Settings from "./pages/Settings";
 
 import "./index.css";
 
-function AppRouter() {
-  const hash = window.location.hash;
-  // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS
-  if (hash?.includes("session_id=")) {
-    return <AuthCallback />;
-  }
+const CLERK_KEY = process.env.REACT_APP_CLERK_PUBLISHABLE_KEY;
 
+function ProtectedRoute({ children }) {
+  const { isLoaded, isSignedIn } = useAuth();
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+  if (!isSignedIn) {
+    return <RedirectToSignIn />;
+  }
+  return children;
+}
+
+function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<Landing />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/signup" element={<Signup />} />
+      <Route path="/login/*" element={<Login />} />
+      <Route path="/signup/*" element={<Signup />} />
 
       {/* Protected routes */}
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
@@ -49,15 +60,46 @@ function AppRouter() {
   );
 }
 
+function ClerkNavigationProvider({ children }) {
+  const navigate = useNavigate();
+  return (
+    <ClerkProvider
+      publishableKey={CLERK_KEY}
+      routerPush={(to) => navigate(to)}
+      routerReplace={(to) => navigate(to, { replace: true })}
+      signInUrl="/login"
+      signUpUrl="/signup"
+      afterSignOutUrl="/"
+    >
+      {children}
+    </ClerkProvider>
+  );
+}
+
 export default function App() {
+  if (!CLERK_KEY) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background text-foreground p-8">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-2">Configuration Required</h1>
+          <p className="text-muted-foreground">Set REACT_APP_CLERK_PUBLISHABLE_KEY in frontend/.env</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
-      <AuthProvider>
-        <BrowserRouter>
-          <AppRouter />
+      <BrowserRouter>
+        <ClerkNavigationProvider>
+          <AxiosInterceptor>
+            <UserSync>
+              <AppRoutes />
+            </UserSync>
+          </AxiosInterceptor>
           <Toaster richColors position="top-right" />
-        </BrowserRouter>
-      </AuthProvider>
+        </ClerkNavigationProvider>
+      </BrowserRouter>
     </ThemeProvider>
   );
 }

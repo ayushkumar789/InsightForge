@@ -41,14 +41,14 @@ export default function InsightsPage() {
 
   const fetchData = useCallback(async () => {
     try {
-      const dsRes = await axios.get(`${API}/datasets/${datasetId}`, { withCredentials: true });
+      const dsRes = await axios.get(`${API}/datasets/${datasetId}`);
       setDataset(dsRes.data);
       try {
-        const anaRes = await axios.get(`${API}/datasets/${datasetId}/analysis`, { withCredentials: true });
+        const anaRes = await axios.get(`${API}/datasets/${datasetId}/analysis`);
         setAnalysis(anaRes.data);
       } catch {}
       try {
-        const insRes = await axios.get(`${API}/datasets/${datasetId}/insights`, { withCredentials: true });
+        const insRes = await axios.get(`${API}/datasets/${datasetId}/insights`);
         setInsight(insRes.data);
       } catch {}
     } catch { toast.error("Dataset not found"); }
@@ -70,7 +70,7 @@ export default function InsightsPage() {
   const triggerInsights = async () => {
     setGenerating(true);
     try {
-      await axios.post(`${API}/datasets/${datasetId}/insights`, {}, { withCredentials: true });
+      await axios.post(`${API}/datasets/${datasetId}/insights`, {});
       toast.success("Insight generation started");
       fetchData();
     } catch (err) {

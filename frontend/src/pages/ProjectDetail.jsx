@@ -58,7 +58,7 @@ function DatasetCard({ dataset, onRefresh, projectId, workspaceId }) {
     e.stopPropagation();
     setAnalyzing(true);
     try {
-      await axios.post(`${API}/datasets/${dataset.dataset_id}/analyze`, {}, { withCredentials: true });
+      await axios.post(`${API}/datasets/${dataset.dataset_id}/analyze`, {});
       toast.success("Analysis started — this may take a moment");
       onRefresh();
     } catch (err) {
@@ -74,7 +74,7 @@ function DatasetCard({ dataset, onRefresh, projectId, workspaceId }) {
     fd.append("file", file);
     try {
       await axios.put(`${API}/datasets/${dataset.dataset_id}/replace`, fd, {
-        withCredentials: true, headers: { "Content-Type": "multipart/form-data" }
+        headers: { "Content-Type": "multipart/form-data" }
       });
       toast.success("Dataset replaced — previous analysis invalidated");
       onRefresh();
@@ -90,7 +90,7 @@ function DatasetCard({ dataset, onRefresh, projectId, workspaceId }) {
     e.stopPropagation();
     if (!window.confirm(`Delete dataset "${dataset.name}"?`)) return;
     try {
-      await axios.delete(`${API}/datasets/${dataset.dataset_id}`, { withCredentials: true });
+      await axios.delete(`${API}/datasets/${dataset.dataset_id}`);
       toast.success("Dataset deleted");
       onRefresh();
     } catch { toast.error("Delete failed"); }
@@ -210,7 +210,6 @@ function UploadZone({ projectId, onUploaded }) {
     fd.append("file", file);
     try {
       await axios.post(`${API}/datasets`, fd, {
-        withCredentials: true,
         headers: { "Content-Type": "multipart/form-data" },
         onUploadProgress: (e) => setProgress(Math.round(e.loaded / e.total * 100)),
       });
@@ -290,9 +289,9 @@ export default function ProjectDetail() {
   const fetchData = useCallback(async () => {
     try {
       const [projRes, dsRes, statsRes] = await Promise.all([
-        axios.get(`${API}/projects/${projectId}`, { withCredentials: true }),
-        axios.get(`${API}/projects/${projectId}/datasets`, { withCredentials: true }),
-        axios.get(`${API}/projects/${projectId}/stats`, { withCredentials: true }),
+        axios.get(`${API}/projects/${projectId}`),
+        axios.get(`${API}/projects/${projectId}/datasets`),
+        axios.get(`${API}/projects/${projectId}/stats`),
       ]);
       setProject(projRes.data);
       setDatasets(dsRes.data);

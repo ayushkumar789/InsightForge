@@ -1,73 +1,96 @@
+"""
+Clerk JWT authentication for InsightForge.
+Verifies Clerk-issued JWTs and resolves users from MongoDB.
+"""
 import os
 import uuid
-from datetime import datetime, timezone, timedelta
-from passlib.context import CryptContext
+import jwt
+from datetime import datetime, timezone
 from fastapi import Request, HTTPException
 from database import db
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def _get_public_key():
+    """Load Clerk JWT public key from environment."""
+    raw = os.environ.get("CLERK_JWT_PUBLIC_KEY", "")
+    # Handle escaped newlines from .env
+    return raw.replace("\\n", "\n")
 
 
-def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+def _get_allowed_parties():
+    """Load allowed azp (authorized parties) from environment."""
+    raw = os.environ.get("CLERK_ALLOWED_PARTIES", "")
+    if not raw:
+        return None
+    return [p.strip() for p in raw.split(",") if p.strip()]
 
 
-def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+def verify_clerk_token(token: str) -> dict:
+    """Verify a Clerk JWT and return the decoded payload."""
+    public_key = _get_public_key()
+    if not public_key:
+        raise HTTPException(status_code=500, detail="CLERK_JWT_PUBLIC_KEY not configured")
+
+    try:
+        payload = jwt.decode(
+            token,
+            public_key,
+            algorithms=["RS256"],
+            options={"verify_aud": False},
+        )
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError as e:
+        raise HTTPException(status_code=401, detail=f"Invalid token: {e}")
+
+    # Optionally verify azp (authorized party)
+    allowed = _get_allowed_parties()
+    if allowed:
+        azp = payload.get("azp", "")
+        if azp and azp not in allowed:
+            raise HTTPException(status_code=401, detail="Unauthorized client")
+
+    if not payload.get("sub"):
+        raise HTTPException(status_code=401, detail="Missing subject in token")
+
+    return payload
 
 
-def generate_session_token() -> str:
-    return f"sess_{uuid.uuid4().hex}"
+async def get_or_create_user(clerk_user_id: str, email: str = None, name: str = None, picture: str = None) -> dict:
+    """Find existing user by clerk_user_id, or create a new one."""
+    user = await db.users.find_one({"clerk_user_id": clerk_user_id}, {"_id": 0})
+    if user:
+        return user
 
-
-def session_expiry() -> datetime:
-    return datetime.now(timezone.utc) + timedelta(days=7)
-
-
-async def create_session(user_id: str) -> str:
-    token = generate_session_token()
-    expires = session_expiry()
-    await db.user_sessions.insert_one({
-        "session_token": token,
+    # Auto-create user from Clerk identity
+    user_id = f"user_{uuid.uuid4().hex[:12]}"
+    now = datetime.now(timezone.utc).isoformat()
+    user_doc = {
         "user_id": user_id,
-        "expires_at": expires.isoformat(),
-        "created_at": datetime.now(timezone.utc).isoformat()
-    })
-    return token
+        "clerk_user_id": clerk_user_id,
+        "email": email or "",
+        "name": name or "",
+        "picture": picture,
+        "auth_provider": "clerk",
+        "created_at": now,
+    }
+    await db.users.insert_one(user_doc)
+    return {k: v for k, v in user_doc.items() if k != "_id"}
 
 
 async def get_current_user(request: Request) -> dict:
-    """Dependency: validates session from cookie or Authorization header."""
-    # 1. Cookie first
-    session_token = request.cookies.get("session_token")
-    # 2. Authorization header fallback
-    if not session_token:
-        auth = request.headers.get("Authorization", "")
-        if auth.startswith("Bearer "):
-            session_token = auth[7:]
-
-    if not session_token:
+    """FastAPI dependency: validates Clerk JWT from Authorization header and resolves user."""
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    session = await db.user_sessions.find_one(
-        {"session_token": session_token}, {"_id": 0}
-    )
-    if not session:
-        raise HTTPException(status_code=401, detail="Invalid session")
+    token = auth_header[7:]
+    payload = verify_clerk_token(token)
+    clerk_user_id = payload["sub"]
 
-    # Check expiry
-    expires_at = session["expires_at"]
-    if isinstance(expires_at, str):
-        expires_at = datetime.fromisoformat(expires_at)
-    if expires_at.tzinfo is None:
-        expires_at = expires_at.replace(tzinfo=timezone.utc)
-    if expires_at < datetime.now(timezone.utc):
-        raise HTTPException(status_code=401, detail="Session expired")
-
-    user = await db.users.find_one(
-        {"user_id": session["user_id"]}, {"_id": 0, "password_hash": 0}
-    )
+    user = await db.users.find_one({"clerk_user_id": clerk_user_id}, {"_id": 0})
     if not user:
-        raise HTTPException(status_code=401, detail="User not found")
+        # Auto-create from JWT claims (minimal record)
+        user = await get_or_create_user(clerk_user_id)
 
     return user

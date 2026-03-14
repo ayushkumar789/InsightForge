@@ -1,11 +1,10 @@
 import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
-import { useAuth } from "../contexts/AuthContext";
+import { useUser, useClerk } from "@clerk/clerk-react";
 import {
-  LayoutDashboard, FolderOpen, Settings, LogOut, Sun, Moon, Menu, X,
-  ChevronRight, Database, BarChart2, Lightbulb, FileText,
-  Layers, ChevronDown,
+  LayoutDashboard, Settings, Sun, Moon, Menu,
+  BarChart2, Layers, ChevronDown, LogOut,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
@@ -37,33 +36,39 @@ function ThemeToggle() {
   );
 }
 
-function UserMenu({ user, logout }) {
+function UserMenu() {
+  const { user } = useUser();
+  const { signOut } = useClerk();
   const navigate = useNavigate();
-  const initials = (user?.name || "U").split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+
+  const name = user?.fullName || user?.firstName || "User";
+  const email = user?.primaryEmailAddress?.emailAddress || "";
+  const picture = user?.imageUrl;
+  const initials = name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="h-8 flex items-center gap-2 px-2" data-testid="user-menu-trigger">
           <Avatar className="h-7 w-7">
-            <AvatarImage src={user?.picture} />
+            <AvatarImage src={picture} />
             <AvatarFallback className="text-xs gradient-indigo text-white">{initials}</AvatarFallback>
           </Avatar>
-          <span className="text-sm font-medium max-w-[100px] truncate hidden sm:block">{user?.name}</span>
+          <span className="text-sm font-medium max-w-[100px] truncate hidden sm:block">{name}</span>
           <ChevronDown className="h-3 w-3 text-muted-foreground" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">
         <div className="px-2 py-1.5">
-          <p className="text-sm font-medium truncate">{user?.name}</p>
-          <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+          <p className="text-sm font-medium truncate">{name}</p>
+          <p className="text-xs text-muted-foreground truncate">{email}</p>
         </div>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => navigate("/settings")} data-testid="settings-menu-item">
           <Settings className="h-4 w-4 mr-2" /> Settings
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={logout} className="text-destructive" data-testid="logout-menu-item">
+        <DropdownMenuItem onClick={() => signOut({ redirectUrl: "/" })} className="text-destructive" data-testid="logout-menu-item">
           <LogOut className="h-4 w-4 mr-2" /> Sign out
         </DropdownMenuItem>
       </DropdownMenuContent>
@@ -73,15 +78,8 @@ function UserMenu({ user, logout }) {
 
 export default function Layout({ children }) {
   const location = useLocation();
-  const navigate = useNavigate();
-  const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-
-  const handleLogout = async () => {
-    await logout();
-    navigate("/login");
-  };
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
@@ -173,12 +171,11 @@ export default function Layout({ children }) {
             >
               <Menu className="h-4 w-4" />
             </Button>
-            {/* Breadcrumb placeholder - pages inject their own */}
             <div id="breadcrumb-portal" />
           </div>
           <div className="flex items-center gap-1">
             <ThemeToggle />
-            <UserMenu user={user} logout={handleLogout} />
+            <UserMenu />
           </div>
         </header>
 

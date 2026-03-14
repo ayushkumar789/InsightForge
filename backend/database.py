@@ -12,9 +12,13 @@ db = client[os.environ['DB_NAME']]
 
 async def init_db():
     """Create MongoDB indexes for performance"""
-    await db.users.create_index("email", unique=True)
-    await db.user_sessions.create_index("session_token")
-    await db.user_sessions.create_index("user_id")
+    # Drop old conflicting indexes if they exist
+    try:
+        await db.users.drop_index("email_1")
+    except Exception:
+        pass
+    await db.users.create_index("email", unique=True, sparse=True)
+    await db.users.create_index("clerk_user_id", unique=True, sparse=True)
     await db.workspaces.create_index("owner_id")
     await db.projects.create_index("workspace_id")
     await db.datasets.create_index("project_id")

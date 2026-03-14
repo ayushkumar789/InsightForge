@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
-import { useAuth } from "../contexts/AuthContext";
+
 import Layout from "../components/Layout";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -59,7 +59,6 @@ function WorkspaceCard({ ws, onEdit, onDelete, onClick }) {
 
 export default function WorkspacesPage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const [workspaces, setWorkspaces] = useState([]);
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
@@ -69,7 +68,7 @@ export default function WorkspacesPage() {
   const [saving, setSaving] = useState(false);
 
   const fetchWorkspaces = () =>
-    axios.get(`${API}/workspaces`, { withCredentials: true })
+    axios.get(`${API}/workspaces`)
       .then(r => setWorkspaces(r.data))
       .catch(() => toast.error("Failed to load workspaces"))
       .finally(() => setLoading(false));
@@ -80,7 +79,7 @@ export default function WorkspacesPage() {
     if (!wsName.trim()) return;
     setSaving(true);
     try {
-      await axios.post(`${API}/workspaces`, { name: wsName.trim() }, { withCredentials: true });
+      await axios.post(`${API}/workspaces`, { name: wsName.trim() });
       toast.success("Workspace created");
       setCreateOpen(false);
       setWsName("");
@@ -93,7 +92,7 @@ export default function WorkspacesPage() {
     if (!wsName.trim()) return;
     setSaving(true);
     try {
-      await axios.put(`${API}/workspaces/${editWs.workspace_id}`, { name: wsName.trim() }, { withCredentials: true });
+      await axios.put(`${API}/workspaces/${editWs.workspace_id}`, { name: wsName.trim() });
       toast.success("Workspace renamed");
       setEditWs(null);
       setWsName("");
@@ -105,7 +104,7 @@ export default function WorkspacesPage() {
   const handleDelete = async () => {
     setSaving(true);
     try {
-      await axios.delete(`${API}/workspaces/${deleteWs.workspace_id}`, { withCredentials: true });
+      await axios.delete(`${API}/workspaces/${deleteWs.workspace_id}`);
       toast.success("Workspace deleted");
       setDeleteWs(null);
       fetchWorkspaces();

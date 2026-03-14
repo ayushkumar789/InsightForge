@@ -354,10 +354,10 @@ export default function AnalysisPage() {
 
   const fetchData = useCallback(async () => {
     try {
-      const dsRes = await axios.get(`${API}/datasets/${datasetId}`, { withCredentials: true });
+      const dsRes = await axios.get(`${API}/datasets/${datasetId}`);
       setDataset(dsRes.data);
       try {
-        const anaRes = await axios.get(`${API}/datasets/${datasetId}/analysis`, { withCredentials: true });
+        const anaRes = await axios.get(`${API}/datasets/${datasetId}/analysis`);
         setAnalysis(anaRes.data);
       } catch {}
     } catch { toast.error("Dataset not found"); }
@@ -380,7 +380,7 @@ export default function AnalysisPage() {
   const triggerAnalysis = async () => {
     setTriggering(true);
     try {
-      await axios.post(`${API}/datasets/${datasetId}/analyze`, {}, { withCredentials: true });
+      await axios.post(`${API}/datasets/${datasetId}/analyze`, {});
       toast.success("Analysis started");
       fetchData();
     } catch (err) {

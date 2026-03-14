@@ -70,8 +70,8 @@ export default function WorkspaceDetail() {
   const fetchData = async () => {
     try {
       const [wsRes, projRes] = await Promise.all([
-        axios.get(`${API}/workspaces/${workspaceId}`, { withCredentials: true }),
-        axios.get(`${API}/workspaces/${workspaceId}/projects`, { withCredentials: true }),
+        axios.get(`${API}/workspaces/${workspaceId}`),
+        axios.get(`${API}/workspaces/${workspaceId}/projects`),
       ]);
       setWorkspace(wsRes.data);
       setProjects(projRes.data);
@@ -85,7 +85,7 @@ export default function WorkspaceDetail() {
     if (!form.name.trim()) return;
     setSaving(true);
     try {
-      await axios.post(`${API}/workspaces/${workspaceId}/projects`, form, { withCredentials: true });
+      await axios.post(`${API}/workspaces/${workspaceId}/projects`, form);
       toast.success("Project created");
       setCreateOpen(false);
       setForm({ name: "", description: "" });
@@ -97,7 +97,7 @@ export default function WorkspaceDetail() {
   const handleRename = async () => {
     setSaving(true);
     try {
-      await axios.put(`${API}/projects/${editProject.project_id}`, form, { withCredentials: true });
+      await axios.put(`${API}/projects/${editProject.project_id}`, form);
       toast.success("Project updated");
       setEditProject(null);
       fetchData();
@@ -108,7 +108,7 @@ export default function WorkspaceDetail() {
   const handleDelete = async () => {
     setSaving(true);
     try {
-      await axios.delete(`${API}/projects/${deleteProject.project_id}`, { withCredentials: true });
+      await axios.delete(`${API}/projects/${deleteProject.project_id}`);
       toast.success("Project deleted");
       setDeleteProject(null);
       fetchData();
