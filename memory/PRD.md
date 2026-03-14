@@ -84,6 +84,15 @@ InsightForge is a full-stack SaaS dataset analytics workspace platform.
 - **Removed:** AuthContext, AuthCallback, ProtectedRoute (old), withCredentials, session cookies, password hashing, Emergent OAuth exchange, JWT_SECRET
 - **Removed models:** UserCreate, UserLogin, GoogleSessionExchange, PasswordChange
 
+### Phase 7 - Runtime Debugging & Auth Fixes (2026-03-14)
+- **CORS fix:** Added preview domain to CORS_ORIGINS; set `allow_credentials=False` (Bearer tokens don't need credentials mode)
+- **CLERK_ALLOWED_PARTIES fix:** Added preview domain; changed azp check to non-blocking (log warning only)
+- **PEM key parsing fix:** Strip indentation whitespace from multi-line .env values so PyJWT can parse the RSA public key
+- **AxiosInterceptor fix:** Replaced stale-closure pattern with `useRef`-based approach — interceptor registered once, always reads latest `getToken`/`isSignedIn` from refs
+- **Debug endpoint removed:** Cleaned up temporary `/auth/debug-token` endpoint
+- **Emergent removal:** Replaced `emergentintegrations` with direct `google-generativeai` SDK for Gemini insights
+- **Verified end-to-end:** Sign-in → Dashboard → Workspaces → Projects → Datasets → Analysis → all working in preview
+
 ## Environment Variables Required
 ```
 # Frontend (/app/frontend/.env)
