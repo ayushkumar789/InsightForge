@@ -23,8 +23,8 @@ app = FastAPI(title="InsightForge API", version="1.0.0")
 # CORS must be before routes
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=os.environ.get("CORS_ORIGINS", "*").split(","),
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

@@ -33,7 +33,6 @@ async def sync_user(body: UserSyncBody, request: Request):
 
     existing = await db.users.find_one({"clerk_user_id": clerk_user_id}, {"_id": 0})
     if existing:
-        # Update profile fields
         update_fields = {}
         if body.email and body.email != existing.get("email"):
             update_fields["email"] = body.email

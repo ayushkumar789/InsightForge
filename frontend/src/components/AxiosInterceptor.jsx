@@ -1,26 +1,29 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { useAuth } from "@clerk/clerk-react";
 import axios from "axios";
 
 /**
  * Global axios interceptor that attaches the Clerk JWT
  * as Authorization: Bearer <token> on every outgoing request.
+ * Uses refs to avoid stale closure issues.
  */
 export default function AxiosInterceptor({ children }) {
   const { getToken, isSignedIn } = useAuth();
-  const interceptorId = useRef(null);
+  const getTokenRef = useRef(getToken);
+  const isSignedInRef = useRef(isSignedIn);
+
+  // Keep refs current without re-registering interceptor
+  useEffect(() => {
+    getTokenRef.current = getToken;
+    isSignedInRef.current = isSignedIn;
+  }, [getToken, isSignedIn]);
 
   useEffect(() => {
-    // Eject previous interceptor if any
-    if (interceptorId.current !== null) {
-      axios.interceptors.request.eject(interceptorId.current);
-    }
-
-    interceptorId.current = axios.interceptors.request.use(
+    const id = axios.interceptors.request.use(
       async (config) => {
-        if (isSignedIn) {
+        if (isSignedInRef.current) {
           try {
-            const token = await getToken();
+            const token = await getTokenRef.current();
             if (token) {
               config.headers.Authorization = `Bearer ${token}`;
             }
@@ -34,11 +37,9 @@ export default function AxiosInterceptor({ children }) {
     );
 
     return () => {
-      if (interceptorId.current !== null) {
-        axios.interceptors.request.eject(interceptorId.current);
-      }
+      axios.interceptors.request.eject(id);
     };
-  }, [getToken, isSignedIn]);
+  }, []); // Register once, use refs for latest values
 
   return children;
 }
