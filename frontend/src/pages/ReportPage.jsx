@@ -65,15 +65,18 @@ export default function ReportPage() {
     if (!report?.report_id) return;
     try {
       const url = `${API}/reports/${report.report_id}/download`;
-      const { data } = await axios.get(url, { responseType: "blob" });
-      const blob = new Blob([data], { type: "application/pdf" });
+      const response = await axios.get(url, { responseType: "blob" });
+      const blob = new Blob([response.data], { type: "application/pdf" });
+      const blobUrl = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
+      link.href = blobUrl;
       link.download = `${dataset?.name || "report"}.pdf`;
+      document.body.appendChild(link);
       link.click();
-      URL.revokeObjectURL(link.href);
-    } catch {
-      toast.error("Failed to download report");
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Failed to download report");
     }
   };
 
