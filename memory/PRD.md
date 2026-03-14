@@ -1,20 +1,25 @@
 # InsightForge PRD
 
 ## Product Overview
-InsightForge is a full-stack SaaS-style dataset analytics workspace platform.
+InsightForge is a full-stack SaaS dataset analytics workspace platform.
 
-**User Flow:** User Account → Workspace → Project → Dataset → Analysis → Insights → Report Export
+**User Flow:** Clerk Sign-in → Dashboard → Workspace → Project → Dataset → Analysis → Insights → Report Export
 
 ## Architecture
-- **Frontend:** React 18 + Tailwind CSS + Shadcn UI + Recharts
-- **Backend:** FastAPI + MongoDB + Motor (async)
-- **Auth:** JWT/email-password sessions + Google OAuth (Emergent Auth)
+- **Frontend:** React 18 + Tailwind CSS + Shadcn UI + Recharts + @clerk/clerk-react
+- **Backend:** FastAPI + MongoDB + Motor (async) + PyJWT (Clerk JWT verification)
+- **Auth:** Clerk (email/password, Google, GitHub) — JWT Bearer tokens
 - **AI:** Google Gemini 2.5 Flash via emergentintegrations (user-provided API key)
 - **PDF:** ReportLab + matplotlib
 - **File Storage:** `/app/uploads/datasets/` and `/app/uploads/reports/`
 
+## Auth Architecture (Clerk)
+- **Frontend:** `ClerkProvider` wraps the app. `AxiosInterceptor` attaches `Authorization: Bearer <clerk-token>` to all axios requests. `UserSync` creates/updates local DB user on first sign-in.
+- **Backend:** `get_current_user` FastAPI dependency verifies Clerk JWT (RS256) from Authorization header. Auto-creates user record in MongoDB on first authenticated request.
+- **Routes:** `/login` renders Clerk `<SignIn>`, `/signup` renders Clerk `<SignUp>`. Protected routes use `ProtectedRoute` component with Clerk `useAuth()`.
+
 ## Core Requirements (Static)
-1. Authentication (signup, login, Google OAuth, logout)
+1. Authentication via Clerk (email/password, Google, GitHub)
 2. Workspace CRUD (create, rename, delete, list)
 3. Project CRUD (create, rename, delete, list inside workspace)
 4. Dataset upload (CSV/XLSX), status lifecycle, replace, delete, preview
@@ -28,7 +33,7 @@ InsightForge is a full-stack SaaS-style dataset analytics workspace platform.
 12. Project dashboard with dataset health stats
 
 ## Data Entities
-- User, UserSession
+- User (clerk_user_id, email, name, picture, auth_provider)
 - Workspace (members array for future collaboration)
 - Project
 - Dataset (separate from AnalysisRun)
@@ -38,87 +43,76 @@ InsightForge is a full-stack SaaS-style dataset analytics workspace platform.
 
 ## What's Been Implemented
 
-### Phase 1 ✅
-- JWT + Google OAuth authentication (httponly cookie sessions)
+### Phase 1 - Core Platform ✅
 - Workspace CRUD with cascade delete
 - Project CRUD with cascade delete
 - Dataset upload (CSV/XLSX), preview, replace, delete
 - Dataset status badges (6 states)
 - Contextual action buttons per dataset status
 
-### Phase 2 ✅
+### Phase 2 - Analysis Engine ✅
 - Deterministic analysis engine (pandas, numpy)
 - Stats: row/col count, missing values, duplicates, numeric/categorical summaries, correlations, outliers, quality score
 - Chart data generation: histograms, scatter, bar, grouped bar, heatmap
+- Column relevance scoring, identifier detection, smart chart recommendations
 - Analysis persistence in MongoDB (AnalysisRun)
 - Recharts visualization: BarChart, ScatterChart, custom correlation heatmap
-- Background job execution (FastAPI BackgroundTasks + run_in_executor)
 
-### Phase 3 ✅
+### Phase 3 - AI Insights ✅
 - Gemini insights generation (requires GEMINI_API_KEY)
-- Structured prompt with analysis summary (no raw data sent)
+- Structured prompt with analysis summary
 - InsightRun persistence with model metadata
 - Insights page with sections: Executive Summary, Trends, Anomalies, Insights, Recommendations
 
-### Phase 4 ✅
+### Phase 4 - Reports ✅
 - PDF report generation with ReportLab + matplotlib
 - Report includes: dataset overview, statistics tables, chart images, AI insights
 - Download endpoint with FileResponse
-- Dataset replacement with analysis invalidation
 
-### Phase 5 ✅ (2026-03-13)
-- **Analysis Engine Refinement:**
-  - Column relevance scoring system (0-100 score per column)
-  - Identifier column detection (email, uuid, id patterns + high-uniqueness heuristics)
-  - Smart chart recommendations based on analytical usefulness
-  - Freedman-Diaconis histogram binning with responsive bin edge formatting (K/M suffixes)
-  - Scatter plot uses most-correlated column pair instead of arbitrary first two
-  - High-cardinality categorical columns separated from analytical dimensions
-  - Time series chart support with auto-detected date columns
-  - Horizontal bar charts when many categories or long labels
-- **UI Responsiveness for Wide Screens:**
-  - Dashboard: max-w-screen-2xl (1536px) — was 1024px
-  - Workspaces/WorkspaceDetail: max-w-screen-2xl + 2xl:grid-cols-4
-  - ProjectDetail: max-w-[1800px] + 2xl:grid-cols-4 for dataset cards
-  - DatasetDetail: max-w-[1800px] + 2xl:grid-cols-6 meta cards
-  - AnalysisPage: max-w-[1800px] + 2xl:grid-cols-4 for charts and categorical
-  - InsightsPage: max-w-screen-2xl + xl:grid-cols-3 insight sections
-  - ReportPage: max-w-screen-2xl
-  - Settings: max-w-4xl
+### Phase 5 - Analysis Refinement + Responsive Layout ✅ (2026-03-13)
+- Column relevance scoring (0-100), identifier detection
+- Smart scatter plot (most-correlated pair), Freedman-Diaconis binning
+- Wider page containers (1536-1800px), 2xl grid breakpoints
 
-### Infrastructure ✅
-- Dark/light theme toggle
-- Collapsible sidebar
-- Google Fonts (Plus Jakarta Sans, Inter, JetBrains Mono)
-- Responsive card-based UI
-- Status polling for processing datasets
-- Error states, empty states, loading states
-
-## Prioritized Backlog
-### P0 (Critical — Needs User Action)
-- **GEMINI_API_KEY must be added to /app/backend/.env** for AI insights to work
-
-### P1 (High Value — Next Phase)
-- Collaboration: invite team members to workspaces (editor/viewer roles)
-- Email notifications when analysis completes
-- Activity log/audit trail
-- Export charts individually as PNG
-- Workspace-level analytics overview
-
-### P2 (Enhancement)
-- Excel multi-sheet analysis support
-- Dataset versioning history UI
-- Scheduled analysis runs
-- API rate limiting and usage tracking
-- Custom analysis parameters (e.g., specific date column for time series)
+### Phase 6 - Clerk Auth Migration ✅ (2026-03-14)
+- **Full migration from custom JWT + Emergent OAuth to Clerk authentication**
+- Frontend: @clerk/clerk-react with ClerkProvider, SignIn, SignUp, UserButton
+- AxiosInterceptor: Global Bearer token injection for all API calls
+- UserSync: Syncs Clerk user to local MongoDB on first sign-in
+- Backend: PyJWT RS256 Clerk JWT verification, auto-create users
+- Endpoints: /auth/sync (user creation), /auth/me, /auth/profile
+- **Removed:** AuthContext, AuthCallback, ProtectedRoute (old), withCredentials, session cookies, password hashing, Emergent OAuth exchange, JWT_SECRET
+- **Removed models:** UserCreate, UserLogin, GoogleSessionExchange, PasswordChange
 
 ## Environment Variables Required
 ```
-# /app/backend/.env
-GEMINI_API_KEY=<your-gemini-api-key>          # Required for AI insights
-GEMINI_MODEL=gemini-2.5-flash                 # Default model
+# Frontend (/app/frontend/.env)
+REACT_APP_BACKEND_URL=<preview-url>
+REACT_APP_CLERK_PUBLISHABLE_KEY=<clerk-publishable-key>  # Required
+
+# Backend (/app/backend/.env)
+MONGO_URL=mongodb://localhost:27017
+DB_NAME=test_database
+CLERK_JWT_PUBLIC_KEY=<pem-public-key>  # Required (RS256)
+CLERK_ALLOWED_PARTIES=<comma-separated-origins>  # Optional
+GEMINI_API_KEY=<gemini-api-key>  # Required for AI insights
+GEMINI_MODEL=gemini-2.5-flash
+UPLOAD_DIR=/app/uploads
 ```
 
-## Test Credentials
-- Email: test@insightforge.com
-- Password: testpass123
+## Prioritized Backlog
+### P0 (Required for App to Function)
+- REACT_APP_CLERK_PUBLISHABLE_KEY must be set in frontend/.env
+- CLERK_JWT_PUBLIC_KEY must be set in backend/.env
+- GEMINI_API_KEY must be set in backend/.env for AI insights
+
+### P1 (High Value)
+- Workspace collaboration (invite members, editor/viewer roles)
+- Activity log / audit trail
+- Export individual charts as PNG
+
+### P2 (Enhancement)
+- Excel multi-sheet analysis
+- Dataset versioning history UI
+- Scheduled analysis runs
+- API rate limiting
