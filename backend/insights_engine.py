@@ -27,8 +27,8 @@ def _build_prompt(dataset: dict, analysis: dict) -> str:
     # Build compact stats for prompt
     numeric_stats = "\n".join([
         f"  {col}: min={v.get('min')}, max={v.get('max')}, "
-        f"mean={v.get('mean'):.2f if v.get('mean') else 'N/A'}, "
-        f"std={v.get('std'):.2f if v.get('std') else 'N/A'}, "
+        f"mean={v.get('mean', 0):.2f}, "
+        f"std={v.get('std', 0):.2f}, "
         f"outliers={v.get('outlier_count', 0)}"
         for col, v in list(numeric_summaries.items())[:10]
     ])
